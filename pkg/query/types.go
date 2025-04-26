@@ -1,6 +1,8 @@
 package query
 
-import "ddb/pkg/consistency"
+import (
+	"ddb/pkg/consistency"
+)
 
 
 type QueryType int

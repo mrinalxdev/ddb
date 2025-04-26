@@ -2,14 +2,14 @@ package query
 
 import (
 	"context"
-	"ddb/pkg/consistency"
-	"ddb/pkg/partition"
 	"fmt"
 	"strings"
 	"time"
+
+	"ddb/pkg/consistency"
+	"ddb/pkg/partition"
 )
 
-// QueryProcessor handles query parsing and execution.
 type QueryProcessor struct {
 	coordinator *consistency.Coordinator
 	partitioner *partition.Partitioner
@@ -17,7 +17,7 @@ type QueryProcessor struct {
 	timeout     time.Duration
 }
 
-// NewQueryProcessor creates a new query processor.
+
 func NewQueryProcessor(coordinator *consistency.Coordinator, partitioner *partition.Partitioner, nodeClient consistency.NodeClient, timeout time.Duration) *QueryProcessor {
 	return &QueryProcessor{
 		coordinator: coordinator,
@@ -27,7 +27,7 @@ func NewQueryProcessor(coordinator *consistency.Coordinator, partitioner *partit
 	}
 }
 
-// ParseQuery parses a text-based query into a Query struct.
+
 func (qp *QueryProcessor) ParseQuery(input string) (*Query, error) {
 	parts := strings.Fields(input)
 	if len(parts) < 2 {
@@ -62,7 +62,7 @@ func (qp *QueryProcessor) ParseQuery(input string) (*Query, error) {
 		return nil, fmt.Errorf("unknown query type: %s", parts[0])
 	}
 
-	// Optional: Parse consistency level if provided (e.g., "PUT key value QUORUM")
+	
 	if len(parts) > queryArgCount(query.Type) {
 		switch strings.ToUpper(parts[queryArgCount(query.Type)]) {
 		case "ONE":
@@ -107,7 +107,6 @@ func (qp *QueryProcessor) ExecuteLocal(ctx context.Context, query *Query) (strin
 		}
 		return value, nil
 	case DELETE:
-		// DELETE is implemented as a write with a tombstone (simplified)
 		err := qp.coordinator.Write(ctx, query.Key, "__TOMBSTONE__", query.ConsistencyLevel)
 		if err != nil {
 			return "", fmt.Errorf("failed to execute DELETE: %w", err)
@@ -118,7 +117,7 @@ func (qp *QueryProcessor) ExecuteLocal(ctx context.Context, query *Query) (strin
 	}
 }
 
-// ExecuteDistributed executes a query across the cluster.
+
 func (qp *QueryProcessor) ExecuteDistributed(ctx context.Context, query *Query) (string, error) {
 	// Get nodes responsible for the key
 	nodes, err := qp.partitioner.GetPartitionNodes(query.Key)
@@ -127,14 +126,14 @@ func (qp *QueryProcessor) ExecuteDistributed(ctx context.Context, query *Query) 
 	}
 
 	// If the local node is one of the responsible nodes, use the coordinator directly
-	localNodeID := qp.coordinator.GetLocalNodeID()
+	localNodeID := qp.coordinator.GetLocalNodeId()
 	for _, node := range nodes {
 		if node.ID == localNodeID {
 			return qp.ExecuteLocal(ctx, query)
 		}
 	}
 
-	// Otherwise, forward the query to the first responsible node (simplified)
+
 	primaryNode := nodes[0]
 	switch query.Type {
 	case PUT:
@@ -160,7 +159,7 @@ func (qp *QueryProcessor) ExecuteDistributed(ctx context.Context, query *Query) 
 	}
 }
 
-// Execute parses and executes a query, choosing local or distributed execution.
+
 func (qp *QueryProcessor) Execute(ctx context.Context, input string) (string, error) {
 	query, err := qp.ParseQuery(input)
 	if err != nil {
